@@ -1,0 +1,20 @@
+from pathlib import Path
+from playwright.sync_api import sync_playwright
+import json
+root=Path(__file__).resolve().parent.parent
+files={str(p.relative_to(root)):p.read_text() for p in (root/'modulos').rglob('*.html')}
+# Test-only adapter: browser policy blocks navigation to file/http URLs.
+# Feed exact module bytes to iframe srcdoc in place of path transport.
+cat=(root/'catalogo.js').read_text(); source=(root/'index.html').read_text()
+adapter='''<script>window.TEST_FILES=FILES;const desc=Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype,'src');Object.defineProperty(HTMLIFrameElement.prototype,'src',{configurable:true,get:desc.get,set(v){if(!(v in TEST_FILES))throw Error('unknown path '+v);this.srcdoc=TEST_FILES[v]}});const remove=Element.prototype.removeAttribute;Element.prototype.removeAttribute=function(k){if(this instanceof HTMLIFrameElement&&k==='src')remove.call(this,'srcdoc');return remove.call(this,k)};</script>'''.replace('FILES;',json.dumps(files,ensure_ascii=True).replace('</','<\\/')+';') # only first FILES; literal
+page_source=source.replace('<script src="catalogo.js"></script>',adapter+'<script>'+cat+'</script>')
+checks=0
+def ck(x,msg):
+ global checks
+ assert x,msg;checks+=1
+with sync_playwright() as p:
+ b=p.chromium.launch(executable_path='/usr/bin/chromium',headless=True,args=['--no-sandbox']);page=b.new_page(viewport={'width':1440,'height':960});page.set_default_timeout(5000);errors=[];requests=[];page.on('pageerror',lambda e:errors.append(str(e)));page.on('request',lambda r:requests.append(r.url) if r.url.startswith(('http:','https:')) else None);page.set_content(page_source);page.wait_for_selector('.module')
+ ck(page.locator('.discipline').count()==5,'5 disciplines');ck(page.locator('.module').count()==50,'50 modules');page.screenshot(path=str(root/'previa-teste.png'))
+ for slug in ['matematica','fisica','quimica','biologia','geografia']:
+  page.locator(f'[data-subject={slug}]').click();ck(page.locator('.module').count()==10,slug)
+ page.locator('#all').click();page.locator('#search').fill('trigonometrico');ck(page.locator('.module').count()==1,'accent insensitive');page.locator('.module').click();frame=page.frame_locator('#labFrame');frame.get_by_text('Em planejamento.',exact=True).wait_for();ck(frame.get_by_text('Em planejamento.',exact=True).is_visible(),'placeholder');page.locator('#back').click();page.locator('#search').fill('xyz123');ck(page.locator('.empty').is_visible(),'empty result');page.locator('#all').click();page.locator('[data-subject=quimica]').click();page.locator('.module').filter(has_text='Molecular Builder').click();frame.locator('#summary').wait_for();ck('H₂O' in frame.locator('#summary').inner_text(),'molecule loaded');frame.locator('#line').click();ck(frame.locator('#line').is_visible(),'line');frame.locator('#lesson').click();page.wait_for_timeout(150);ck(frame.get_by_text('Nexus Learn',exact=False).count()>0,'lesson');page.locator('#focus').click();ck(not page.locator('.labbar').is_visible(),'focus');page.locator('#reveal').click();ck(page.locator('.labbar').is_visible(),'reveal');ck(page.locator('#standalone').get_attribute('href')=='modulos/quimica/molecular-builder.html','separate link');page.locator('#back').click();page.locator('#home').wait_for();ck(page.locator('#home').is_visible(),'return');page.set_viewport_size({'width':390,'height':844});ck(page.evaluate('document.documentElement.scrollWidth<=innerWidth'),'mobile home');page.locator('.action').click();frame.locator('#summary').wait_for();ck(page.evaluate('document.documentElement.scrollWidth<=innerWidth'),'mobile lab shell');page.locator('#back').click();page.locator('#all').click();page.evaluate("TEST_FILES['modulos/quimica/molecular-builder.html']='<h1>TESTE DE SUBSTITUIÇÃO</h1>'");page.locator('.action').click();frame.get_by_text('TESTE DE SUBSTITUIÇÃO').wait_for();ck(frame.get_by_text('TESTE DE SUBSTITUIÇÃO').is_visible(),'replacement in test adapter');ck(not errors,errors);ck(not requests,requests);print(f'{checks} checks passed; errors={errors}; external={requests}');b.close()

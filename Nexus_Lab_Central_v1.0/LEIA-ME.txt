@@ -1,0 +1,14 @@
+NEXUS LAB CENTRAL v1.0
+
+1. Extraia o ZIP inteiro para uma pasta de sua escolha (não abra dentro do ZIP).
+2. Abra index.html no Chrome ou Edge. A central não precisa de instalação, conta ou internet.
+3. Escolha Química → Molecular Builder. O mesmo HTML aprovado v0.2.2 está integrado sem alteração.
+4. Volte à biblioteca pelo botão superior. Use Abrir separado se preferir abrir o laboratório diretamente.
+
+ATUALIZAÇÕES INDEPENDENTES
+O caminho do Molecular Builder é modulos/quimica/molecular-builder.html. Para atualizá-lo, feche o laboratório, copie a nova versão para essa pasta com exatamente esse nome, substitua o arquivo antigo e reabra a central ou recarregue. Mantenha uma cópia de segurança se desejar preservar a versão anterior. Não é necessário alterar index.html nem catalogo.js para atualizar um dos 50 módulos existentes. A versão exibida pelo próprio laboratório depende do arquivo instalado.
+Os outros 49 HTML são páginas de espera. Ao receber um novo laboratório, substitua o respectivo arquivo no caminho documentado em MAPA_MODULOS.md. A central não tenta detectar versões nem disponibilidade automaticamente. A mensagem sobre a distribuição inicial descreve esta entrega, não o estado atualizado de cada instalação.
+Novas disciplinas ou módulos fora dos 50 atuais exigem acrescentar entradas no catalogo.js. Preserve identificadores e caminhos existentes. Cada módulo deve ser HTML autocontido, sem CDN nem rede obrigatória; se futuramente exigir arquivos auxiliares, será necessário enviá-los também.
+
+LIMITES
+A navegação entre módulos encerra a sessão do anterior. O editor molecular existente não salva automaticamente o estado; não há nova persistência nem editor 2D nesta entrega. O renderizador software é mantido; Three.js continua pendente. Nenhum serviço pago, publicação ou conta.
